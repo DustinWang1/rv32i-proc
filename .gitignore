@@ -4,9 +4,15 @@ build/
 .Xil/
 *.vcd
 *.fst
+*.xml
+__pycache__/
+.pyc
 .venv/
 .vscode
 
 # generated simulation artifacts
 **/sim_build/
 **/build/
+**/results.xml
+**/__pycache__/
+**/*.pyc
