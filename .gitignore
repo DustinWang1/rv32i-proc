@@ -6,3 +6,7 @@ build/
 *.fst
 .venv/
 .vscode
+
+# generated simulation artifacts
+**/sim_build/
+**/build/

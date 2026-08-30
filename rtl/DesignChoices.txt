@@ -1,0 +1,7 @@
+This txt file contains the specific design choices made
+for each module.
+
+Instruction Memory:
+- ADDR_WIDTH determines the size of the memory, input address is sliced accordingly
+- address is a word address not byte address
+

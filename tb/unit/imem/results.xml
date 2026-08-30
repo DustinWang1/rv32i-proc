@@ -1,0 +1,6 @@
+<testsuites name="results">
+  <testsuite name="all" package="all">
+    <property name="random_seed" value="1788125982" />
+    <testcase name="imem_test" classname="test_imem" file="/home/wangd/rv32i/tb/unit/imem/test_imem.py" lineno="5" time="0.02083134651184082" sim_time_ns="512.0" ratio_time="24578.343973538736" />
+  </testsuite>
+</testsuites>
