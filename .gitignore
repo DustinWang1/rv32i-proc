@@ -1,0 +1,8 @@
+build/
+*.jou
+*.log
+.Xil/
+*.vcd
+*.fst
+.venv/
+.vscode
