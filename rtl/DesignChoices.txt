@@ -5,3 +5,9 @@ Instruction Memory:
 - ADDR_WIDTH determines the size of the memory, input address is sliced accordingly
 - address is a word address not byte address
 
+Fetch:
+- Given the one cycle delay on the IM, there is an extra buffer on the PC and next PC bus
+- On a flush or reset, the output instruction is always an NOP
+- PC, PCF, and NEXTPC are all on sync reset
+- In order to keep IM simple, we introduce a PC-4 to input into IM on a stall.
+

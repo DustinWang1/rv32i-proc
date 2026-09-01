@@ -7,12 +7,14 @@ async def if_test(dut):
     Clock(dut.clk, 1, unit="ns").start()
 
     dut.rst.value = 1
-    await Timer(3, unit="ns")
+    await RisingEdge(dut.clk)
+    await RisingEdge(dut.clk)
+    await RisingEdge(dut.clk)
     dut.rst.value = 0
 
     # Test expected sequence
     await RisingEdge(dut.clk)
-    assert int(dut.instrF.value) == 0
+    assert int(dut.instrF.value) == 0x00000013
     await RisingEdge(dut.clk)
     assert int(dut.instrF.value) == 0
     await RisingEdge(dut.clk)
@@ -52,6 +54,24 @@ async def if_test(dut):
     assert int(dut.pc.value) == 4
     await RisingEdge(dut.clk)
     assert int(dut.instrF.value) == 1
+
+    # Test rst
+    dut.rst.value = 1
+    await RisingEdge(dut.clk)
+    assert int(dut.instrF.value) == 0x00000013
+    await RisingEdge(dut.clk)
+    assert int(dut.instrF.value) == 0x00000013
+    await RisingEdge(dut.clk)
+    assert int(dut.instrF.value) == 0x00000013
+    dut.rst.value = 0
+    await RisingEdge(dut.clk)
+    assert int(dut.instrF.value) == 0x00000013
+    assert int(dut.pc.value) == 0
+    await RisingEdge(dut.clk)
+    assert int(dut.instrF.value) == 0
+    assert int(dut.pc.value) == 4
+
+    
     
     
     

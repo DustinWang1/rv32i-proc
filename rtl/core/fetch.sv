@@ -16,10 +16,11 @@ logic [31:0] prevPc, pc, nextPc;
 logic [31:0] imemAddr;
 logic [31:0] instr;
 logic flush_flag;
+logic rst_flag;
 
 imem #(.ADDR_WIDTH(ADDR_WIDTH), .INIT_FILE(INIT_FILE)) imem(clk, imemAddr, instr);
 
-assign instrF = flush || flush_flag ? 32'h00000013 : instr;
+assign instrF = rst || rst_flag || flush || flush_flag ? 32'h00000013 : instr;
 assign nextPc = pc + 32'd4;
 assign prevPc = pc - 32'd4;
 
@@ -31,6 +32,14 @@ always_ff @(posedge clk) begin
     end else begin
         if(flush == 1'b1) flush_flag <= 1;
         else flush_flag <= 0;
+    end
+end
+
+always_ff @(posedge clk) begin
+    if(rst) begin
+        rst_flag <= 1;
+    end else begin
+        rst_flag <= 0;
     end
 end
 
