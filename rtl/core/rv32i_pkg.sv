@@ -1,4 +1,4 @@
-package rv32i_pkg
+package rv32i_pkg;
 
     typedef enum logic [2:0] {  
         IMM_I,
