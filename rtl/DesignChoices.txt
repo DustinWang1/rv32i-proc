@@ -11,3 +11,14 @@ Fetch:
 - PC, PCF, and NEXTPC are all on sync reset
 - In order to keep IM simple, we introduce a PC-4 to input into IM on a stall.
 
+Register File:
+- combinational read/sequential write
+- write after read
+
+Immediate Extender:
+- 3 bit immSrc control
+0: I-Type
+1: S-Type
+2: B-Type
+3: U-Type
+4: J-Type
