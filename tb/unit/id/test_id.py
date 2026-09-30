@@ -4,6 +4,8 @@ from cocotb.triggers import RisingEdge, Timer
 
 # Mirrors rv32i_pkg::imm_sel_e -- update if your enum's declared order differs
 IMM_I, IMM_S, IMM_B, IMM_U, IMM_J = range(5)
+SRC_IMM, SRC_RS2 = range(2)
+ALU_ADD, ALU_SUB, ALU_AND, ALU_OR, ALU_XOR, ALU_SLL, ALU_SRL, ALU_SRA, ALU_SLT, ALU_SLTU = range(10)
 
 OPCODES = {
     "LOAD": 0b0000011, "OP_IMM": 0b0010011, "STORE": 0b0100011,
@@ -43,11 +45,13 @@ def j_type(imm, rd, opcode):
 
 
 def unpack_ctrl(dut):
-    """ctrl_t = {imm_sel_e immSrc (3b); logic rf_we (1b)} packed MSB-first."""
+    """ctrl_t = {ALUSrc, ALUCon, immSrc, rf_we} packed MSB-first."""
     raw = dut.ctrlD.value.to_unsigned()
     rf_we = raw & 0x1
     imm_src = (raw >> 1) & 0x7
-    return imm_src, rf_we
+    alu_con = (raw >> 4) & 0xF
+    alu_src = (raw >> 8) & 0x1
+    return alu_src, alu_con, imm_src, rf_we
 
 
 async def settle(dut):
@@ -188,9 +192,53 @@ async def controller_opcode_decode(dut):
     for name, instr, exp_imm_src, exp_rf_we in cases:
         dut.instrF.value = instr
         await settle(dut)
-        imm_src, rf_we = unpack_ctrl(dut)
+        _, _, imm_src, rf_we = unpack_ctrl(dut)
         assert imm_src == exp_imm_src, f"{name}: immSrc={imm_src}, expected {exp_imm_src}"
         assert rf_we == exp_rf_we, f"{name}: rf_we={rf_we}, expected {exp_rf_we}"
+
+
+@cocotb.test()
+async def controller_alu_decode(dut):
+    """ALUSrc and ALUCon must select the RV32I operand and operation."""
+    cocotb.start_soon(Clock(dut.clk, 3, unit="ns").start())
+    await reset_dut(dut)
+
+    cases = [
+        ("load address", i_type(0, 1, 2, 5, OPCODES["LOAD"]), SRC_IMM, ALU_ADD),
+        ("store address", s_type(0, 2, 1, 2, OPCODES["STORE"]), SRC_IMM, ALU_ADD),
+        ("addi", i_type(0, 1, 0, 5, OPCODES["OP_IMM"]), SRC_IMM, ALU_ADD),
+        ("slti", i_type(0, 1, 2, 5, OPCODES["OP_IMM"]), SRC_IMM, ALU_SLT),
+        ("sltiu", i_type(0, 1, 3, 5, OPCODES["OP_IMM"]), SRC_IMM, ALU_SLTU),
+        ("xori", i_type(0, 1, 4, 5, OPCODES["OP_IMM"]), SRC_IMM, ALU_XOR),
+        ("ori", i_type(0, 1, 6, 5, OPCODES["OP_IMM"]), SRC_IMM, ALU_OR),
+        ("andi", i_type(0, 1, 7, 5, OPCODES["OP_IMM"]), SRC_IMM, ALU_AND),
+        ("slli", i_type(0, 1, 1, 5, OPCODES["OP_IMM"]), SRC_IMM, ALU_SLL),
+        ("srli", i_type(0, 1, 5, 5, OPCODES["OP_IMM"]), SRC_IMM, ALU_SRL),
+        ("srai", i_type(0x400, 1, 5, 5, OPCODES["OP_IMM"]), SRC_IMM, ALU_SRA),
+        ("add", r_type(0b0000000, 2, 1, 0, 5, OPCODES["OP"]), SRC_RS2, ALU_ADD),
+        ("sub", r_type(0b0100000, 2, 1, 0, 5, OPCODES["OP"]), SRC_RS2, ALU_SUB),
+        ("sll", r_type(0, 2, 1, 1, 5, OPCODES["OP"]), SRC_RS2, ALU_SLL),
+        ("slt", r_type(0, 2, 1, 2, 5, OPCODES["OP"]), SRC_RS2, ALU_SLT),
+        ("sltu", r_type(0, 2, 1, 3, 5, OPCODES["OP"]), SRC_RS2, ALU_SLTU),
+        ("xor", r_type(0, 2, 1, 4, 5, OPCODES["OP"]), SRC_RS2, ALU_XOR),
+        ("srl", r_type(0, 2, 1, 5, 5, OPCODES["OP"]), SRC_RS2, ALU_SRL),
+        ("sra", r_type(0b0100000, 2, 1, 5, 5, OPCODES["OP"]), SRC_RS2, ALU_SRA),
+        ("or", r_type(0, 2, 1, 6, 5, OPCODES["OP"]), SRC_RS2, ALU_OR),
+        ("and", r_type(0, 2, 1, 7, 5, OPCODES["OP"]), SRC_RS2, ALU_AND),
+        ("beq", b_type(0, 2, 1, 0, OPCODES["BRANCH"]), SRC_RS2, ALU_SUB),
+        ("bne", b_type(0, 2, 1, 1, OPCODES["BRANCH"]), SRC_RS2, ALU_SUB),
+        ("blt", b_type(0, 2, 1, 4, OPCODES["BRANCH"]), SRC_RS2, ALU_SLT),
+        ("bge", b_type(0, 2, 1, 5, OPCODES["BRANCH"]), SRC_RS2, ALU_SLT),
+        ("bltu", b_type(0, 2, 1, 6, OPCODES["BRANCH"]), SRC_RS2, ALU_SLTU),
+        ("bgeu", b_type(0, 2, 1, 7, OPCODES["BRANCH"]), SRC_RS2, ALU_SLTU),
+    ]
+
+    for name, instr, exp_alu_src, exp_alu_con in cases:
+        dut.instrF.value = instr
+        await settle(dut)
+        alu_src, alu_con, _, _ = unpack_ctrl(dut)
+        assert alu_src == exp_alu_src, f"{name}: ALUSrc={alu_src}, expected {exp_alu_src}"
+        assert alu_con == exp_alu_con, f"{name}: ALUCon={alu_con}, expected {exp_alu_con}"
 
 
 @cocotb.test()
